@@ -12,6 +12,11 @@ Hermes, run the same agent loop, return TTS audio, and share one conversation
 event contract. The name is now historically accurate in only one direction;
 the rename raccoon remains on the roadmap.
 
+For telephone integration, see the [outbound phone configuration and design
+guide](docs/outbound-phone-calls.md). It covers Twilio Elastic SIP Trunking,
+LiveKit Cloud setup, verification, and the proposed Hermes call controller.
+Outbound dialing is not yet implemented by this plugin.
+
 The gateway mark combines a transport arch, messenger wings, and an audio
 pulse. `docs/assets/hermes-gateway-master.png` is the opaque lossless source;
 `./scripts/export-readme-mark.sh` regenerates the optimized README image. The
