@@ -1,7 +1,7 @@
 """hermes-livekit — LiveKit voice gateway plugin for hermes-agent.
 
-Registers a ``livekit`` platform via the ``hermes_agent.plugins`` entry
-point. No core hermes-agent edits are required — every integration touch
+Registers platforms as a native directory plugin or through the legacy
+``hermes_agent.plugins`` entry point. No core hermes-agent edits are required — every integration touch
 point uses an existing ``register_platform()`` hook.
 """
 
@@ -254,7 +254,7 @@ def register(ctx) -> None:
         validate_config=_validate_config,
         is_connected=_is_connected,
         required_env=["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"],
-        install_hint="pip install hermes-livekit  # adds livekit + livekit-api SDKs",
+        install_hint="hermes plugins install kortexa-ai/hermes-livekit/hermes_livekit --enable --yes-deps",
         setup_fn=_interactive_setup,
         # Env-driven auto-config: seeds PlatformConfig.extra + home_channel
         # from LIVEKIT_* env vars, so env-only setups show up in
@@ -286,7 +286,7 @@ def register(ctx) -> None:
         validate_config=_validate_realtime_config,
         is_connected=_validate_realtime_config,
         required_env=[],
-        install_hint="pip install hermes-livekit  # adds aiortc + aiohttp",
+        install_hint="hermes plugins install kortexa-ai/hermes-livekit/hermes_livekit --enable --yes-deps",
         env_enablement_fn=_realtime_env_enablement,
         apply_yaml_config_fn=_apply_realtime_yaml_config,
         allowed_users_env="HERMES_REALTIME_ALLOWED_USERS",

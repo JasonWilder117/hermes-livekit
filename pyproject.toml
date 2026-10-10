@@ -4,14 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-livekit"
-version = "0.4.0"
+version = "0.4.1"
 description = "LiveKit WebRTC voice gateway plugin for hermes-agent"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 authors = [{ name = "kortexa.ai", email = "info@kortexa.ai" }]
 license = "MIT"
 dependencies = [
-  "hermes-agent>=0.20.0",
+  # Hermes is the host, not a pip dependency: current source checkouts publish
+  # placeholder package version 0.0.0 and PM owns their environment. The native
+  # manifest checks the real Hermes runtime version before loading this plugin.
   # Exact pins (mirrors hermes-agent's 2026-05-12 supply-chain hardening
   # policy): PyPI cannot ship a new livekit/livekit-api/Pillow into a
   # user's install without an intentional bump here. Update the pins
@@ -52,7 +54,7 @@ livekit = "hermes_livekit"
 include = ["hermes_livekit*"]
 
 [tool.setuptools.package-data]
-hermes_livekit = ["models/*"]
+hermes_livekit = ["models/*", "plugin.yaml", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

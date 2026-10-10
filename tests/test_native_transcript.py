@@ -47,6 +47,7 @@ async def test_setup_notice_cannot_end_the_processing_turn_before_native_audio(k
     event = MessageEvent(text="Hello", message_type=MessageType.VOICE, source=source)
     runner = SimpleNamespace(
         _adapter_for_source=lambda source: adapter,
+        _delivery_adapter_for=lambda source: adapter,
         _thread_metadata_for_source=lambda source: None,
     )
     consumer = GatewayStreamConsumer(
@@ -226,8 +227,9 @@ async def test_old_tool_timeout_cannot_reopen_or_change_a_cancelled_turn(kind, r
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["realtime", "livekit"])
-@pytest.mark.parametrize("override", [None, True])
-async def test_runner_routes_text_only_when_profile_streaming_policy_enables_it(kind, override):
+@pytest.mark.parametrize("override", [None, True, False])
+@pytest.mark.parametrize("global_enabled", [False, True])
+async def test_runner_routes_text_only_when_profile_streaming_policy_enables_it(kind, override, global_enabled):
     from gateway.config import StreamingConfig
     from gateway.display_config import resolve_display_setting
     from gateway.run_turn import GatewayTurnMixin
@@ -238,8 +240,9 @@ async def test_runner_routes_text_only_when_profile_streaming_policy_enables_it(
     source = SimpleNamespace(platform=kind, chat_id="chat", chat_type="dm")
     user_config = {"display": {"streaming": False, "platforms": {kind: {"streaming": override}}}}
     runner = SimpleNamespace(config=SimpleNamespace(streaming=StreamingConfig(
-        enabled=False, edit_interval=0.01, buffer_threshold=1,
-    )), _adapter_for_source=lambda source: adapter)
+        enabled=global_enabled, edit_interval=0.01, buffer_threshold=1,
+    )), _adapter_for_source=lambda source: adapter,
+        _delivery_adapter_for=lambda source: adapter)
     runner._build_stream_consumer_config = lambda *args, **kwargs: GatewayTurnMixin._build_stream_consumer_config(
         runner, *args, **kwargs,
     )
@@ -249,10 +252,14 @@ async def test_runner_routes_text_only_when_profile_streaming_policy_enables_it(
         interim_assistant_messages_enabled=True, _status_thread_metadata=None,
         progress_queue=None, stream_consumer_holder=[None], event_message_id="user",
         _run_still_current=lambda: True,
+        mute_notification_reply=False,
+        scheduled_heartbeat=False,
     )
     consumer, callback, _, _ = TurnRunner(runner, ctx)._setup_stream_consumer(kind)
     assert consumer is not None  # Interim-message capability alone is not text streaming.
-    if override is None:
+    # Current Hermes makes streaming.enabled a master switch: platform policy
+    # may disable it, but cannot turn it on when the master switch is off.
+    if not global_enabled or override is False:
         assert callback is None
         return
     task = asyncio.create_task(consumer.run())

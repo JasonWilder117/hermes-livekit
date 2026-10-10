@@ -1,0 +1,10 @@
+name: livekit
+version: 0.4.1
+description: LiveKit Conference and direct WebRTC voice gateways for Hermes
+author: kortexa.ai
+kind: platform
+requires_hermes: ">=0.20.0"
+provides_hooks:
+  - agent_loop_stopped
+  - on_stream_delta
+  - post_api_request

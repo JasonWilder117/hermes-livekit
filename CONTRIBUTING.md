@@ -9,27 +9,30 @@ and we'd rather merge a working patch than gate on process.
 git clone https://github.com/kortexa-ai/hermes-livekit
 cd hermes-livekit
 
-# Install editable into the SAME venv your hermes-agent gateway runs in.
-# (If you don't know which one, check `ps -ef | grep hermes_cli.main` and
-# read the python path off the running process.)
-python -m pip install -e .
+# Build a separate Python 3.14 test environment through Hermes PM.
+scripts/bootstrap_tests.sh
 ```
 
-If you use `uv` and the gateway venv is at `~/src/hermes-agent/venv`:
+Bootstrap uses `uv python find 3.14`; install Python 3.14 with uv first if it is
+absent. It fetches a clean vanilla Hermes checkout and asks PM to build a fresh
+`.venv/tests314` environment from a core-plus-plugin workspace under
+`.venv/test-project314`. It never clears an existing environment. For a rebuild,
+stop its test processes and remove only those two disposable directories first.
+
+Keep runtime dependency pins in the distribution's `pyproject.toml` and the
+native `hermes_livekit/pyproject.toml` aligned. The native project is deliberately
+metadata-only so two Hermes profiles can share one PM environment.
+
+Install a reviewed commit in a gateway through the normal plugin command:
 
 ```bash
-VIRTUAL_ENV=~/src/hermes-agent/venv uv pip install -e .
+hermes plugins install kortexa-ai/hermes-livekit/hermes_livekit \
+  --ref <full-commit-sha> --enable --yes-deps
+hermes gateway restart
 ```
 
-The plugin auto-discovers through the `hermes_agent.plugins` entry-point
-group — no config edits required to make the install visible to hermes.
-
-Re-run the editable install after changing or pulling changes to
-`pyproject.toml`. Source files are linked live, but packaging metadata — the
-version, dependencies, and entry point — is refreshed only at install time.
-
-To enable it in a running hermes, add `livekit` to `plugins.enabled` in
-`~/.hermes/config.yaml`, then restart the gateway.
+Use `hermes --profile <name>` for each additional profile. Do not add packages
+to a PM-managed gateway environment with pip or uv.
 
 ## Running it locally
 
@@ -43,13 +46,13 @@ You'll need:
 ### Tests
 
 ```bash
-python -m pip install -e '.[dev]'
 scripts/run_tests.sh
 ```
 
-The first lane always runs against the vanilla Hermes installation in
-`.venv`. It fails before collection if Python resolves the adjacent Kortexa
-checkout by accident.
+The first lane always uses the vanilla checkout under `.development` and the
+Python 3.14 environment under `.venv/tests314`. It fails before collection if
+Python resolves the adjacent Kortexa checkout by accident. The runner clears
+inherited credentials and gives tests a disposable home.
 
 Kortexa developers can copy `.env.development.example` to
 `.env.development.local`. The same command then runs a second lane against the
@@ -79,7 +82,7 @@ README — send `{"type": "conference.capture_frame"}` on the
 To enable verbose adapter logs:
 
 ```bash
-HERMES_LIVEKIT_LOG_LEVEL=DEBUG launchctl kickstart -k gui/$(id -u)/ai.hermes.gateway
+HERMES_LIVEKIT_LOG_LEVEL=DEBUG hermes gateway run
 ```
 
 ## Code style

@@ -35,50 +35,51 @@ original artwork was generated with OpenAI's built-in image generation tool on
 
 ## Install
 
-Install into the **same Python environment** as your `hermes-agent`:
+For current Hermes, install the native plugin through its dependency manager:
+
+```bash
+hermes plugins install kortexa-ai/hermes-livekit/hermes_livekit --enable --yes-deps
+```
+
+The subdirectory is intentional: it contains the native manifest, loader and
+dependency declaration. Hermes PM resolves the pinned SDKs with the core and
+other enabled plugins, then publishes a new Python environment. The plugin and
+its dependencies survive `hermes update`. Python 3.14 is supported.
+
+Install separately for each profile that uses voice:
+
+```bash
+hermes --profile mira plugins install kortexa-ai/hermes-livekit/hermes_livekit --enable --yes-deps
+```
+
+Each profile retains its own settings and plugin registration. The native
+dependency project has no build backend, so PM can combine multiple profile
+copies without duplicate Python package names. No core source edits are needed.
+The manifest requires Hermes Agent 0.20.0 or newer and checks the runtime
+version. Current source installs use `0.0.0` for Python distribution metadata;
+the plugin therefore does not depend on a PyPI `hermes-agent` package.
+
+After installation, restart the affected gateway with `hermes gateway restart`
+or `hermes --profile mira gateway restart`. Use `hermes plugins list` to check
+discovery. Existing pip-only installs must migrate to this native install:
+packages added manually to a previous environment are not an enabled PM member.
+
+### Legacy pip / editable install
+
+For an independently managed Python environment, the pip entry point remains
+available. Use the interpreter from that environment:
 
 ```bash
 python -m pip install git+https://github.com/kortexa-ai/hermes-livekit.git
-```
-
-pip resolves the pinned `livekit` / `livekit-api` SDK versions automatically.
-If Hermes' environment does not contain pip, target its interpreter with uv:
-
-```bash
-uv pip install --python /path/to/hermes/python \
-  git+https://github.com/kortexa-ai/hermes-livekit.git
-```
-
-The plugin is auto-discovered through the `hermes_agent.plugins` entry-point
-group — no edits to hermes-agent's source tree are required. This revision
-requires Hermes Agent 0.20.0 or newer because that host line carries the
-Pillow 12.3 security fixes and the current platform-registration contract.
-Until 0.20.0 is published, install against a current Hermes source checkout.
-
-> Note: `hermes plugins install kortexa-ai/hermes-livekit` is **not** the
-> right path for this plugin. That command `git clone`s into
-> `~/.hermes/plugins/` without resolving pip deps; you'd then have to
-> `pip install 'livekit==1.1.14' 'livekit-api==1.2.0'` by hand. The pip
-> install above is one command and keeps the SDK pins in sync with the
-> plugin version.
-
-### Local / editable install
-
-For development on a checkout (e.g. `~/src/hermes-livekit/`):
-
-```bash
+# Or, for a local checkout:
 python -m pip install -e ~/src/hermes-livekit
 ```
 
-Run that command with the Python interpreter from the same environment as
-Hermes. Re-run it after pulling a change to `pyproject.toml`: editable installs
+Use the native install above for a PM-managed Hermes environment. Re-run the
+editable install after pulling a change to `pyproject.toml`: editable installs
 reflect Python source edits immediately, but package metadata such as the
 version, dependencies, and plugin entry point is generated at install time.
-The uv equivalent is:
-
-```bash
-uv pip install --python /path/to/hermes/python -e ~/src/hermes-livekit
-```
+Hermes must already be installed; the plugin never installs or upgrades its host.
 
 ## Enable
 
@@ -512,16 +513,18 @@ final `.done` transcript replaces the draft, not a second message. Neither
 text update nor text completion indicates that audio playback has stopped.
 
 The adapter capability does not override a profile's disabled text-streaming
-policy. Enable only the voice platforms when other clients should stay final-only:
+policy. Current Hermes requires the master switch as well as platform policy:
 
 ```sh
+hermes --profile mira config set streaming.enabled true
 hermes --profile mira config set display.platforms.realtime.streaming true
 hermes --profile mira config set display.platforms.livekit.streaming true
 ```
 
-Restart that profile's gateway after changing its configuration. The top-level
-`streaming.enabled` can remain false; `display.streaming` controls the CLI,
-not gateway delivery. A consumer created for interim messages alone does not
+Set `display.platforms.<other-platform>.streaming` to false for clients that
+should stay final-only, then restart that profile's gateway. The top-level
+`streaming.enabled` is a master switch; a platform cannot enable it on its own.
+`display.streaming` controls the CLI, not gateway delivery. A consumer created for interim messages alone does not
 receive model text deltas. Qualify a real voice turn, not just adapter methods.
 
 Clients send supported Realtime events on the same topic. Typed input uses a
